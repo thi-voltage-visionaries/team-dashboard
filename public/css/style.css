@@ -1,21 +1,24 @@
+/* body und Header anpassen */
 body {
   font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
   padding: 50px;
   margin: 0;
   text-align: center;
 }
-
+ 
 .flexHeader {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
   justify-content: space-between;
 }
-
+ 
+/* Links anpassen */
 a {
   color: #00B7FF;
 }
-
+ 
+/* Select-Box anpassen */
 body select {
   padding: 10px 70px 10px 13px;
   max-width: 100%;
@@ -30,17 +33,40 @@ body select {
   /* this is must */ -webkit-appearance: none;
   -moz-appearance: none;
 }
-
-/* body select.select_box option */
+ 
+/* Optionen in der Select-Box anpassen */
 body select option {
   padding: 0 4px;
 }
-
-/* for Edge */
+ 
+/* Für Edge */
 select::-ms-expand {
   display: none;
 }
-
+ 
 select:disabled::-ms-expand {
   background: #f60;
+}
+ 
+/* Titel anpassen */
+h1 span:last-child {
+  font-size: 24px; /* Größe des Titels anpassen */
+}
+ 
+ 
+/* Legenden anpassen */
+.chart-legend li:nth-child(1) span {
+  background-color: rgba(255, 204, 0, 0.4); /* Hintergrundfarbe für voltage */
+}
+ 
+.chart-legend li:nth-child(2) span {
+  background-color: rgba(24, 120, 240, 0.4); /* Hintergrundfarbe für current */
+}
+ 
+.chart-legend li:nth-child(3) span {
+  background-color: rgba(0, 128, 0, 0.4); /* Hintergrundfarbe für capacity */
+}
+ 
+.chart-legend li:nth-child(4) span {
+  background-color: rgba(255, 0, 0, 0.4); /* Hintergrundfarbe für soc */
 }
