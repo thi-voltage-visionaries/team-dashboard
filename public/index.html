@@ -1,30 +1,156 @@
-<!doctype html>
+/*
+* IoT Hub Raspberry Pi NodeJS - Microsoft Sample Code - Copyright (c) 2017 - Licensed MIT
+*/
+const wpi = require('wiring-pi');
+const Client = require('azure-iot-device').Client;
+const Message = require('azure-iot-device').Message;
+const Protocol = require('azure-iot-device-mqtt').Mqtt;
+const BME280 = require('bme280-sensor');
 
+const BME280_OPTION = {
+  i2cBusNo: 1, // defaults to 1
+  i2cAddress: BME280.BME280_DEFAULT_I2C_ADDRESS() // defaults to 0x77
+};
+
+const connectionString = 'HostName=VVCloudDasboard.azure-devices.net;DeviceId=VVTestDevice;SharedAccessKey=0oJyEeqefRdxhoiHISu5LTmYmtwfM+VzZAIoTFYG1sc=';
+const LEDPin = 4;
+
+var sendingMessage = false;
+var messageId = 0;
+var client, sensor;
+var blinkLEDTimeout = null;
+
+function getMessage(cb) {
+  messageId++;
+  sensor.readSensorData()
+    .then(function (data) {
+      cb(JSON.stringify({
+        messageId: messageId,
+        deviceId: 'Raspberry Pi Web Client',
+        temperature: data.temperature_C,
+        humidity: data.humidity
+      }), data.temperature_C > 30);
+    })
+    .catch(function (err) {
+      console.error('Failed to read out sensor data: ' + err);
+    });
+}
+
+function sendMessage() {
+  if (!sendingMessage) { return; }
+
+  getMessage(function (content, temperatureAlert) {
+    var message = new Message(content);
+    message.properties.add('temperatureAlert', temperatureAlert.toString());
+    console.log('Sending message: ' + content);
+    client.sendEvent(message, function (err) {
+      if (err) {
+        console.error('Failed to send message to Azure IoT Hub');
+      } else {
+        blinkLED();
+        console.log('Message sent to Azure IoT Hub');
+      }
+    });
+  });
+}
+
+function onStart(request, response) {
+  console.log('Try to invoke method start(' + request.payload + ')');
+  sendingMessage = true;
+
+  response.send(200, 'Successully start sending message to cloud', function (err) {
+    if (err) {
+      console.error('[IoT hub Client] Failed sending a method response:\n' + err.message);
+    }
+  });
+}
+
+function onStop(request, response) {
+  console.log('Try to invoke method stop(' + request.payload + ')');
+  sendingMessage = false;
+
+  response.send(200, 'Successully stop sending message to cloud', function (err) {
+    if (err) {
+      console.error('[IoT hub Client] Failed sending a method response:\n' + err.message);
+    }
+  });
+}
+
+function receiveMessageCallback(msg) {
+  blinkLED();
+  var message = msg.getData().toString('utf-8');
+  client.complete(msg, function () {
+    console.log('Receive message: ' + message);
+  });
+}
+
+function blinkLED() {
+  // Light up LED for 500 ms
+  if(blinkLEDTimeout) {
+       clearTimeout(blinkLEDTimeout);
+   }
+  wpi.digitalWrite(LEDPin, 1);
+  blinkLEDTimeout = setTimeout(function () {
+    wpi.digitalWrite(LEDPin, 0);
+  }, 500);
+}
+
+// set up wiring
+wpi.setup('wpi');
+wpi.pinMode(LEDPin, wpi.OUTPUT);
+sensor = new BME280(BME280_OPTION);
+sensor.init()
+  .then(function () {
+    sendingMessage = true;
+  })
+  .catch(function (err) {
+    console.error(err.message || err);
+  });
+
+// create a client
+client = Client.fromConnectionString(connectionString, Protocol);
+
+client.open(function (err) {
+  if (err) {
+    console.error('[IoT hub Client] Connect error: ' + err.message);
+    return;
+  }
+
+  // set C2D and device method callback
+  client.onDeviceMethod('start', onStart);
+  client.onDeviceMethod('stop', onStop);
+  client.on('message', receiveMessageCallback);
+  setInterval(sendMessage, 2000);
+});
+
+Am 16.05.2024 um 14:51 schrieb jab5727 <jab5727@thi.de>:
+
+<!doctype html>
 <html lang="en">
 <head>
     <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-
-    <script src="https://code.jquery.com/jquery-3.4.0.min.js" integrity="sha256-BJeo0qm959uMBGb65z40ejJYGSgR7REI4+CW1fNKwOg=" crossorigin="anonymous"" type="text/javascript" charset="utf-8"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0/dist/Chart.min.js" type="text/javascript" charset="utf-8"></script>
-    <script src="js/chart-device-data.js" type="text/javascript" charset="utf-8"></script>
+ 
+    <script src="https://code.jquery.com/jquery-3.4.0.min.js" integrity="sha256-BJeo0qm959uMBGb65z40ejJYGSgR7REI4+CW1fNKwOg=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0/dist/Chart.min.js"></script>
+    <script src="js/chart-device-data.js"></script>
     <link href="css/style.css" rel="stylesheet" />
-
-    <title>Temperature &amp; Humidity Real-time Data</title>
+ 
+    <title>Battery Data Real-time Monitoring</title>
 </head>
-
+ 
 <body>
     <h1 class="flexHeader">
         <span>
             <span id="deviceCount">0 devices</span>
             <select id="listOfDevices" class="select_box"></select>
         </span>
-        <span>Temperature & Humidity Real-time Data</span>
+        <span>Battery Data Real-time Monitoring</span>
     </h1>
     <div>
         <canvas id="iotChart"></canvas>
     </div>
 </body>
-
+ 
 </html>
